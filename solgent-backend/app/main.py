@@ -1,6 +1,8 @@
+import json
 import textwrap
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 from app.config import settings
 from app.models import ChatRequest, ChatResponse
@@ -33,7 +35,7 @@ def handle_workspace_transaction(req: ChatRequest):
     # 1. Coordinate conversational memory via Supabase Manager
     db = SupabaseMemoryManager()
     session_history = db.fetch_chat_session(req.session_id)
-    
+
     # 2. Run incoming statement through cognitive intent parsing matrices
     intent = route_intent(req.message)
     metadata = {"intent": intent}
@@ -65,13 +67,107 @@ def handle_workspace_transaction(req: ChatRequest):
         history=session_history,
         model=req.model or "llama-3.3-70b-versatile"
     )
-    
+
     # 7. Sync the transaction record data back into Supabase tables
     db.log_message(req.session_id, "user", req.message)
     db.log_message(req.session_id, "assistant", answer)
 
     metadata["provider"] = "groq-serverless-cloud"
     return ChatResponse(answer=answer, used_metadata=metadata)
+
+
+@app.post("/chat/stream")
+def handle_workspace_transaction_stream(req: ChatRequest):
+    """
+    SSE variant of /chat. Consumed via `fetch()` + a ReadableStream reader on
+    the frontend, NOT the browser's native EventSource API — EventSource only
+    supports GET requests with no body, and this endpoint needs a POST body
+    (message, session_id, model). That's a deliberate, standard tradeoff for
+    chat-style SSE (ChatGPT, Claude.ai, etc. all do the same thing): you get
+    SSE's simple `data: ...\\n\\n` framing without giving up the ability to
+    send a structured request body.
+    """
+    db = SupabaseMemoryManager()
+    session_history = db.fetch_chat_session(req.session_id)
+
+    intent = route_intent(req.message)
+    metadata = {"intent": intent}
+
+    yt = youtube_search(q=intent["yt_query"], max_results=2) if intent.get("needs_youtube") else []
+    if yt: metadata["youtube"] = yt
+
+    products = []
+    if intent.get("needs_commerce"):
+        commerce_bot = UniversalCommerceEngine()
+        products = commerce_bot.search_all_platforms(intent["commerce_query"])
+        metadata["marketplace_sourcing"] = products
+
+    prompt = build_architectural_prompt(
+        user=req.message,
+        system_hint=intent.get("system_hint", ""),
+        yt=yt,
+        products=products,
+        deep=req.deep_think
+    )
+
+    # Log the user's turn BEFORE opening the stream. If the client
+    # disconnects mid-generation (closed tab, network drop), the user's
+    # message is still recorded — losing only the assistant's reply, not
+    # the whole turn. Losing both would silently desync session_history
+    # from what the user actually sees they sent.
+    db.log_message(req.session_id, "user", req.message)
+
+    # Instantiated outside the generator, not inside: if GROQ_API_KEY is
+    # missing, this raises ValueError here, and FastAPI returns a normal
+    # 500 with headers not yet sent. If it were instantiated inside the
+    # generator instead, the failure would happen AFTER we've already
+    # committed to a 200 + text/event-stream response, which is a much
+    # worse failure mode for a client trying to parse SSE frames.
+    client = CloudLLMClient()
+
+    def event_generator():
+        full_response_chunks = []
+        try:
+            for delta in client.stream_with_history(
+                prompt=prompt,
+                history=session_history,
+                model=req.model or "llama-3.3-70b-versatile",
+            ):
+                if delta.startswith("[[STREAM_ERROR]]"):
+                    yield f"event: error\ndata: {json.dumps({'error': delta})}\n\n"
+                    return
+                full_response_chunks.append(delta)
+                yield f"data: {json.dumps({'token': delta})}\n\n"
+        finally:
+            # Runs even on client disconnect (StreamingResponse closes the
+            # generator via GeneratorExit) — so a user who closes the tab
+            # mid-answer still gets whatever was generated so far persisted
+            # to Supabase, keeping session_history consistent for their next
+            # message instead of silently dropping the assistant's turn.
+            assembled = "".join(full_response_chunks)
+            if assembled:
+                db.log_message(req.session_id, "assistant", assembled)
+
+        yield f"event: done\ndata: {json.dumps({'metadata': metadata})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            # Disables response buffering on any nginx layer sitting in
+            # front of this service (e.g. if you later put this backend
+            # behind an nginx reverse proxy or an ingress controller that
+            # uses nginx under the hood — the Stage 1 frontend Dockerfile
+            # already introduced nginx into this stack). Without this,
+            # nginx can buffer the whole response before forwarding it,
+            # which defeats streaming entirely and the client just sees
+            # one big delayed chunk.
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
 
 def build_architectural_prompt(user: str, system_hint: str, yt, products, deep: bool) -> str:
     context_blocks = []
