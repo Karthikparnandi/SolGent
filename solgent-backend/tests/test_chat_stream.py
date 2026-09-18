@@ -37,7 +37,7 @@ def test_chat_stream_emits_sse_data_and_done_events():
         )
         body = response.text
 
-   assert response.status_code == 200
+    assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert body.count('data: {"token":') == 3
     assert body.count("data:") == 4
