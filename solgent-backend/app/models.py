@@ -10,7 +10,7 @@ class MessageSchema(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str
-    model: Optional[str] = "llama-3.3-70b-versatile"
+    model: Optional[str] = "openai/gpt-oss-120b"
     deep_think: Optional[bool] = True
 
 class ChatResponse(BaseModel):
