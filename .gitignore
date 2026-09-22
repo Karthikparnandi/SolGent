@@ -4,4 +4,4 @@ solgent-frontend/node_modules/
 .env
 .env.local
 .venv/
-__pycache__/
+__pycache__/dist/
