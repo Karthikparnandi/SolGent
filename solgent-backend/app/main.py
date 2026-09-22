@@ -65,7 +65,7 @@ def handle_workspace_transaction(req: ChatRequest):
     answer = client.generate_with_history(
         prompt=prompt,
         history=session_history,
-        model=req.model or "llama-3.3-70b-versatile"
+        model=req.model or "openai/gpt-oss-120b"
     )
 
     # 7. Sync the transaction record data back into Supabase tables
@@ -131,7 +131,7 @@ def handle_workspace_transaction_stream(req: ChatRequest):
             for delta in client.stream_with_history(
                 prompt=prompt,
                 history=session_history,
-                model=req.model or "llama-3.3-70b-versatile",
+                model=req.model or "openai/gpt-oss-120b",
             ):
                 if delta.startswith("[[STREAM_ERROR]]"):
                     yield f"event: error\ndata: {json.dumps({'error': delta})}\n\n"
