@@ -14,8 +14,11 @@ catch the boring-but-real regression risk: someone touches the SSE
 formatting or the finally-block persistence logic in main.py and breaks it
 without Groq/Supabase creds available to notice locally.
 """
-from unittest.mock import patch, MagicMock
+
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
+
 from app.main import app
 
 client = TestClient(app)
@@ -25,8 +28,10 @@ def test_chat_stream_emits_sse_data_and_done_events():
     fake_db = MagicMock()
     fake_db.fetch_chat_session.return_value = []
 
-    with patch("app.main.SupabaseMemoryManager", return_value=fake_db), \
-         patch("app.main.CloudLLMClient") as mock_llm_cls:
+    with (
+        patch("app.main.SupabaseMemoryManager", return_value=fake_db),
+        patch("app.main.CloudLLMClient") as mock_llm_cls,
+    ):
         mock_llm = MagicMock()
         mock_llm.stream_with_history.return_value = iter(["Hel", "lo", " world"])
         mock_llm_cls.return_value = mock_llm
@@ -48,8 +53,10 @@ def test_chat_stream_persists_assembled_assistant_reply():
     fake_db = MagicMock()
     fake_db.fetch_chat_session.return_value = []
 
-    with patch("app.main.SupabaseMemoryManager", return_value=fake_db), \
-         patch("app.main.CloudLLMClient") as mock_llm_cls:
+    with (
+        patch("app.main.SupabaseMemoryManager", return_value=fake_db),
+        patch("app.main.CloudLLMClient") as mock_llm_cls,
+    ):
         mock_llm = MagicMock()
         mock_llm.stream_with_history.return_value = iter(["Hel", "lo"])
         mock_llm_cls.return_value = mock_llm
@@ -64,8 +71,10 @@ def test_chat_stream_surfaces_upstream_error_as_sse_error_event():
     fake_db = MagicMock()
     fake_db.fetch_chat_session.return_value = []
 
-    with patch("app.main.SupabaseMemoryManager", return_value=fake_db), \
-         patch("app.main.CloudLLMClient") as mock_llm_cls:
+    with (
+        patch("app.main.SupabaseMemoryManager", return_value=fake_db),
+        patch("app.main.CloudLLMClient") as mock_llm_cls,
+    ):
         mock_llm = MagicMock()
         mock_llm.stream_with_history.return_value = iter(["[[STREAM_ERROR]] rate limited"])
         mock_llm_cls.return_value = mock_llm

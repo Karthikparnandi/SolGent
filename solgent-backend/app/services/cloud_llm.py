@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+
 from app.config import settings
 
 
@@ -23,8 +24,7 @@ class CloudLLMClient:
     ) -> str:
         """Runs contextual inference offloaded to remote cloud clusters."""
         formatted_messages = [
-            {"role": msg.get("role"), "content": msg.get("content")}
-            for msg in history
+            {"role": msg.get("role"), "content": msg.get("content")} for msg in history
         ]
         formatted_messages.append({"role": "user", "content": prompt})
 
@@ -55,8 +55,7 @@ class CloudLLMClient:
         single process to interleave hundreds of concurrent streaming sessions.
         """
         formatted_messages = [
-            {"role": msg.get("role"), "content": msg.get("content")}
-            for msg in history
+            {"role": msg.get("role"), "content": msg.get("content")} for msg in history
         ]
         formatted_messages.append({"role": "user", "content": prompt})
 

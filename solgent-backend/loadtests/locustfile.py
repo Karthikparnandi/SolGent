@@ -26,8 +26,10 @@ Run against a LOCAL docker-compose stack first (see README below) before
 ever pointing this at a shared/staging Supabase project — every simulated
 user writes two real rows to your chat_history table per request.
 """
+
 import time
-from locust import HttpUser, task, between, events
+
+from locust import HttpUser, between, events, task
 
 
 class SolGentStreamUser(HttpUser):

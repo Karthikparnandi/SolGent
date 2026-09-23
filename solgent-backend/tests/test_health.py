@@ -12,7 +12,9 @@ fixtures or use dependency injection. For now, /health is the correct
 also literally the endpoint your container orchestrator (Cloud Run, ECS,
 Kubernetes) will poll to decide whether to route traffic to this instance.
 """
+
 from fastapi.testclient import TestClient
+
 from app.main import app
 
 client = TestClient(app)

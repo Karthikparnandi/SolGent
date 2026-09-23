@@ -1,18 +1,18 @@
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, Field
 
-RoleType = Literal["system", "user", "assistant"]
-
-class MessageSchema(BaseModel):
-    role: RoleType
-    content: str
 
 class ChatRequest(BaseModel):
-    message: str
-    session_id: str
-    model: Optional[str] = "openai/gpt-oss-120b"
-    deep_think: Optional[bool] = True
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="User message capped at 4000 chars.",
+    )
+    session_id: str = Field(..., min_length=1, max_length=128)
+    model: str | None = "openai/gpt-oss-120b"
+    deep_think: bool | None = True
+
 
 class ChatResponse(BaseModel):
     answer: str
-    used_metadata: Dict[str, Any]
+    used_metadata: dict

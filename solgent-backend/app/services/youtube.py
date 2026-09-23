@@ -1,13 +1,15 @@
-import requests
 import re
 import urllib.parse
-from typing import List, Dict, Any
+from typing import Any
 
-def youtube_search(q: str, max_results: int = 2) -> List[Dict[str, Any]]:
+import requests
+
+
+def youtube_search(q: str, max_results: int = 2) -> list[dict[str, Any]]:
     """Pulls visual reference media metadata from public search indexes without Google Dev console keys."""
     encoded_query = urllib.parse.quote(q)
     url = f"https://www.youtube.com/results?search_query={encoded_query}"
-    
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
@@ -26,14 +28,16 @@ def youtube_search(q: str, max_results: int = 2) -> List[Dict[str, Any]]:
             if v_id in seen or len(results) >= max_results:
                 continue
             seen.add(v_id)
-            
+
             title = titles[idx] if idx < len(titles) else "Visual Workspace Tutorial"
-            results.append({
-                "title": title.encode().decode('unicode-escape', errors='ignore'),
-                "videoId": v_id,
-                "url": f"https://youtube.com/watch?v={v_id}"
-            })
-            
+            results.append(
+                {
+                    "title": title.encode().decode("unicode-escape", errors="ignore"),
+                    "videoId": v_id,
+                    "url": f"https://youtube.com/watch?v={v_id}",
+                }
+            )
+
         return results
     except Exception:
         return []

@@ -8,7 +8,7 @@ can accidentally shadow another branch's classification with no runtime error,
 just a wrong answer. These tests pin the current classification contract so
 that regression shows up as a failed assertion in CI, not as a support ticket.
 """
-import pytest
+
 from app.utils.router import route_intent
 
 
@@ -41,8 +41,12 @@ def test_general_fallback_when_no_keywords_match():
 
 def test_route_intent_always_returns_required_keys():
     required_keys = {
-        "workflow", "needs_youtube", "needs_commerce",
-        "yt_query", "commerce_query", "system_hint",
+        "workflow",
+        "needs_youtube",
+        "needs_commerce",
+        "yt_query",
+        "commerce_query",
+        "system_hint",
     }
     result = route_intent("anything at all")
     assert required_keys.issubset(result.keys())
