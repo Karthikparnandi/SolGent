@@ -92,9 +92,10 @@ export default function App() {
     setInput(""); 
 
     const startTime = performance.now();
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/chat", {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -102,7 +103,7 @@ export default function App() {
         body: JSON.stringify({
           message: query,
           session_id: sessionId,
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-120b",
           deep_think: true
         })
       });
@@ -126,7 +127,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("API Processing Failure:", error);
-      setErrorMessage("Could not connect to the SolGent backend service. Please ensure the FastAPI server is running on port 5000.");
+      setErrorMessage(`Could not connect to the SolGent backend service at ${API_BASE_URL}. Please ensure the FastAPI server is running.`);
     } finally {
       setIsLoading(false);
     }
@@ -558,11 +559,11 @@ function CodeCard({ lang, block }) {
     <div className="code-container-block" style={{ width: "100%", boxSizing: "border-box", margin: "1rem 0" }}>
       <div className="code-header-action" style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 1rem", background: "#1e293b", color: "#94a3b8", fontSize: "0.8rem", borderRadius: "6px 6px 0 0" }}>
         <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-          <HardDrive color="#3b82f6" size="{12}"/>
+          <HardDrive color="#3b82f6" size={12}/>
           {lang || "source"}
         </span>
         <button type="button" onClick={handleCopy} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          {copied ? <><Check color="#10b981" size="{12}"/> Copied</> : <><Copy size="{12}"/> Copy code</>}
+          {copied ? <><Check color="#10b981" size={12}/> Copied</> : <><Copy size={12}/> Copy code</>}
         </button>
       </div>
       <pre style={{ margin: 0, padding: "1rem", overflowX: "auto", fontSize: "0.85rem", background: "#090d16", color: "#e2e8f0", borderRadius: "0 0 6px 6px" }}>
