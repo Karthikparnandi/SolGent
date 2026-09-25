@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Cpu, HardDrive, Copy, Check, ChevronDown, ChevronUp, ExternalLink, Video, Plus, Send } from "lucide-react";
 
 export default function App() {
@@ -517,7 +517,7 @@ function ResponseParser({ text }) {
       const match = part.match(/```(\w*)\n([\s\S]*?)```/);
       const lang = match ? match[1] : "source";
       const codeLines = match ? match[2].trim() : part.replace(/```/g, "").trim();
-      return <CodeCard block="{codeLines}" key="{index}" lang="{lang}"/>;
+    return <CodeCard block={codeLines} key={index} lang={lang} />;
     }
     
     return part.split("\n").map((line, lIdx) => {
