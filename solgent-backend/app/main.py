@@ -38,11 +38,20 @@ app.add_middleware(
 # --- Rate limiting setup -----------------------------------------------
 # Limiter keyed on client IP (get_remote_address). app.state.limiter and
 # the exception handler let @limiter.limit(...) decorators work on
-# individual routes; SlowAPIMiddleware is required in addition to those —
-# without it, slowapi's decorators error on every request instead of
-# only rate-limiting the 11th+ call, which is the exact bug that caused
-# every /chat call to 500 before this middleware line was added.
-limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+# individual routes; SlowAPIMiddleware is required in addition to those.
+#
+# NOTE: headers_enabled is deliberately OFF. Turning it on makes slowapi
+# try to inject X-RateLimit-* headers into whatever the endpoint returns,
+# BEFORE FastAPI has converted a response_model-typed return value (like
+# ChatResponse) into an actual starlette.responses.Response instance —
+# which raises `Exception: parameter response must be an instance of
+# starlette.responses.Response` inside slowapi/extension.py on every call
+# to /chat. /chat/stream never hit this because StreamingResponse IS
+# already a real Response instance when returned. The limiter itself
+# (429s, retry-after) works correctly without headers_enabled — confirmed
+# via concurrent burst testing — so this is a deliberate omission, not a
+# missing feature.
+limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -84,11 +93,10 @@ async def handle_workspace_transaction(request: Request, req: ChatRequest):
         deep=req.deep_think
     )
 
-    # 6. Offload raw text parsing to lightning-fast cloud LPUs
-    #    NOTE: `await` here is load-bearing. Without it, `answer` is a
-    #    coroutine object, not a string, and ChatResponse validation
-    #    fails with a 500 on every single call — this exact bug shipped
-    #    once already in this repo; see test_chat_endpoint_returns_string_answer_not_coroutine.
+    # 6. Offload raw text parsing to lightning-fast cloud LPUs.
+    #    `await` here is load-bearing — without it, `answer` is a coroutine
+    #    object, not a string, and ChatResponse validation fails with a 500
+    #    on every call. See test_chat_endpoint_returns_string_answer_not_coroutine.
     client = CloudLLMClient()
     answer = await client.generate_with_history(
         prompt=prompt,
